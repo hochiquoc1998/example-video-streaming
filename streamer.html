@@ -1,35 +1,85 @@
 <html>
-<head>
+  <head>
     <title>Streamer</title>
-</head>
-<body>
+    <style>
+      .alert {
+        position: fixed;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #f44336;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 5px;
+        display: none;
+        z-index: 9999;
+      }
+    </style>
+  </head>
+  <body>
     <video autoplay></video>
+    <div id="alert" class="alert">
+      Hiện tại tài khoản của bạn đang live stream ở 1 nơi khác
+    </div>
     <script>
-        // get video dom element
-        const video = document.querySelector('video');
-        
-        // request access to webcam
-        navigator.mediaDevices.getUserMedia({video: {width: 426, height: 240}}).then((stream) => video.srcObject = stream);
-        
-        // returns a frame encoded in base64
-        const getFrame = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            const data = canvas.toDataURL('image/png');
-            return data;
-        }
-        const WS_URL = 'ws://192.168.107.136:8090/wsout';
+      // get video dom element
+      const video = document.querySelector('video');
 
-        const FPS = 12;
-        const ws = new WebSocket(WS_URL);
+      // request access to webcam
+      navigator.mediaDevices
+        .getUserMedia({ video: { width: 426, height: 240 } })
+        .then((stream) => (video.srcObject = stream));
 
-        ws.onopen = () => {
-            setInterval(() => {
-                ws.send(getFrame());
-            }, 1000 / FPS);
+      // returns a frame encoded in base64
+      const getFrame = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const data = canvas.toDataURL('image/png');
+        return data;
+      };
+
+      const WS_URL = 'ws://localhost:8090/wsout';
+      const FPS = 12;
+
+      let isStreaming = false; // Biến để theo dõi trạng thái live streaming
+
+      const ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        isStreaming = true; // Khi kết nối WebSocket được mở, đặt isStreaming thành true
+
+        // Gửi khung hình ở tần suất FPS chỉ định
+        setInterval(() => {
+          // Kiểm tra xem người dùng có đang live stream từ tab khác không
+          if (isStreaming) {
+            ws.send(getFrame());
+          }
+        }, 1000 / FPS);
+      };
+
+      // Xử lý sự kiện khi ngắt kết nối WebSocket
+      ws.onclose = () => {
+        isStreaming = false; // Đặt lại isStreaming thành false khi kết nối bị đóng
+      };
+
+      // Xử lý sự kiện khi có lỗi WebSocket
+      ws.onerror = () => {
+        isStreaming = false; // Đặt lại isStreaming thành false khi có lỗi xảy ra
+      };
+
+      // Hiển thị cảnh báo nếu người dùng đang live stream từ tab khác
+      window.addEventListener('focus', () => {
+        if (!isStreaming) {
+          document.getElementById('alert').style.display = 'none';
         }
+      });
+      window.addEventListener('blur', () => {
+        if (isStreaming) {
+          document.getElementById('alert').style.display = 'block';
+        }
+      });
     </script>
-</body>
+  </body>
 </html>

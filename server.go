@@ -10,7 +10,8 @@ import (
 
 var clientSenders = make(map[*websocket.Conn]bool) // connected clients
 var clientReceivers = make(map[*websocket.Conn]bool)
-var broadcast = make(chan []byte) // broadcast channel
+var broadcast = make(chan []byte)            // broadcast channel
+var tabConnections = make(map[string]string) // Lưu trữ thông tin người dùng đang sử dụng tab
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -48,6 +49,11 @@ func handleRecievers(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleConnections(w http.ResponseWriter, r *http.Request) {
+
+	userID := r.URL.Query().Get("userID") // Lấy userID từ thông tin truy vấn
+
+	fmt.Println("============11", userID)
+
 	// Upgrade initial GET request to a websocket
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	ws, err := upgrader.Upgrade(w, r, nil)
@@ -95,7 +101,7 @@ func main() {
 	http.HandleFunc("/hello", hello)
 	http.HandleFunc("/headers", headers)
 	// Configure websocket route
-	http.HandleFunc("/wsout", handleConnections)
+	http.HandleFunc("/wsout/user1", handleConnections)
 	http.HandleFunc("/wsin", handleRecievers)
 
 	// Start listening for incoming  messages
